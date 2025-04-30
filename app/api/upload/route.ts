@@ -1,25 +1,24 @@
-// File: app/api/upload/route.ts
-
+// =============================================
+// app/api/upload/route.ts  (Token Provider 완성본)
+// =============================================
 import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
-import { Readable } from 'stream';
 
 const PARENT_FOLDER_ID = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID!;
 
+/**
+ * 이 라우트는 대용량 파일을 직접 받지 않고
+ * 1) 1‑hour Google Drive access_token 발급
+ * 2) 요청된 곡(piece) 폴더가 없으면 생성 후 folderId 반환
+ */
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const name = formData.get('name') as string;
-    const piece = formData.get('piece') as string;
-    const file = formData.get('file') as File;
-
-    if (!name || !piece || !file) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    const { piece } = await req.json();
+    if (!piece || typeof piece !== 'string') {
+      return NextResponse.json({ error: 'piece is required' }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const stream = Readable.from(buffer);
-
+    // 🔐 서비스 계정 인증
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: process.env.GOOGLE_CLIENT_EMAIL!,
@@ -28,17 +27,22 @@ export async function POST(req: NextRequest) {
       scopes: ['https://www.googleapis.com/auth/drive'],
     });
 
+    // 1️⃣  Access Token (약 1시간 유효)
+    const access_token = await auth.getAccessToken();
+
+    // 2️⃣  곡 폴더 검색/생성
     const drive = google.drive({ version: 'v3', auth });
 
-    const folderList = await drive.files.list({
+    const list = await drive.files.list({
       q: `mimeType='application/vnd.google-apps.folder' and name='${piece}' and '${PARENT_FOLDER_ID}' in parents and trashed=false`,
-      fields: 'files(id, name)',
+      fields: 'files(id)',
+      spaces: 'drive',
     });
 
-    let folderId = folderList.data.files?.[0]?.id;
+    let folderId = list.data.files?.[0]?.id;
 
     if (!folderId) {
-      const folder = await drive.files.create({
+      const folderCreate = await drive.files.create({
         requestBody: {
           name: piece,
           mimeType: 'application/vnd.google-apps.folder',
@@ -46,24 +50,12 @@ export async function POST(req: NextRequest) {
         },
         fields: 'id',
       });
-      folderId = folder.data.id!;
+      folderId = folderCreate.data.id!;
     }
 
-    const uploaded = await drive.files.create({
-      requestBody: {
-        name: `${name}_${piece}_${Date.now()}.mp3`,
-        parents: [folderId],
-      },
-      media: {
-        mimeType: file.type,
-        body: stream,
-      },
-      fields: 'id, name, webViewLink',
-    });
-
-    return NextResponse.json({ message: '업로드 성공', file: uploaded.data });
+    return NextResponse.json({ access_token, folderId });
   } catch (error) {
-    console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Google Drive 업로드 실패' }, { status: 500 });
+    console.error('upload token-provider error:', error);
+    return NextResponse.json({ error: 'Failed to generate Drive token' }, { status: 500 });
   }
 }
