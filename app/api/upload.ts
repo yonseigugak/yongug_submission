@@ -65,7 +65,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         folderId = folder.data.id!;
       }
 
-      const fileStream = fs.createReadStream(file.filepath);
+      const buffer = fs.readFileSync(file.filepath);
+      const fileStream = Readable.from(buffer);
 
       const uploaded = await drive.files.create({
         requestBody: {
