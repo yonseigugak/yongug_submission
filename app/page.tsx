@@ -39,24 +39,31 @@ export default function Home() {
       setUploadMessage('이름, 곡명, 파일을 모두 선택해주세요.');
       return;
     }
-
+  
     const formData = new FormData();
     formData.append('name', name);
     formData.append('piece', selectedPiece);
     formData.append('file', file);
-
+  
     setUploadMessage('업로드 중...');
-
+  
     try {
       const res = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
-
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || '업로드 실패');
-
+  
+      let message = '업로드 실패';
+      try {
+        const data = await res.json();
+        message = data.message || data.error || message;
+      } catch (e) {
+        const text = await res.text(); // ⚠️ JSON 아님 → 텍스트로 fallback
+        message = `❌ 서버 응답 오류: ${text.slice(0, 100)}`;
+      }
+  
+      if (!res.ok) throw new Error(message);
+  
       setUploadMessage('✅ 업로드 성공!');
       setFile(null);
       setSelectedPiece('');

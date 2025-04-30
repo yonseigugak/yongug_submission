@@ -4,6 +4,14 @@ import { Readable } from 'stream';
 
 const PARENT_FOLDER_ID = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID!;
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '100mb', // 또는 더 큰 용량
+    },
+  },
+};
+
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get('file') as File;
