@@ -157,7 +157,14 @@ export default function Home() {
           type="file"
           accept="audio/*"
           onChange={(e) => setFile(e.target.files?.[0] || null)}
-          className="mb-2"
+          className="
+            mb-2
+            file:bg-blue-600 file:text-white
+            file:px-4 file:py-2 file:rounded
+            file:border-0
+            file:cursor-pointer
+            hover:file:bg-blue-700
+          "
         />
 
         <button
