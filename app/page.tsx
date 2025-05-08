@@ -155,7 +155,7 @@ export default function Home() {
 
         <input
           type="file"
-          accept="audio/*"
+          /* accept="audio/*" */
           onChange={(e) => setFile(e.target.files?.[0] || null)}
           className="
             mb-2
