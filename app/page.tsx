@@ -1,36 +1,38 @@
 // =============================
-// app/page.tsx  (클라이언트 UI)
+// app/page.tsx  (클라이언트 UI ‑ 전체 소스)
 // =============================
 'use client';
 
 import { useState } from 'react';
 
-/** ─── 새 타입 정의 ───────────────────────────── */
-type Breakdown = {
-  일반?: number;
-  고정?: number;
-  결석?: number;
-  지각?: number;
+/** 항목 축약 라벨 */
+const LABEL: Record<string, string> = {
+  고정결석계: '고정',
+  일반결석계: '일반',
+  결석:       '결석',
+  지각:       '지각',
 };
-type AttendanceResult = Record<
-  string,                // 곡명
-  { total: number; breakdown: Breakdown }
->;
-/** ───────────────────────────────────────────── */
+
+/** 스프레드시트에 존재하는 곡명 시트 */
+const PIECES = ['취타', '미락흘', '도드리', '축제', '플투스'] as const;
+
+type Breakdown = Record<'고정결석계' | '일반결석계' | '결석' | '지각', number>;
+type SheetInfo = { required: number; breakdown: Breakdown };
 
 export default function Home() {
-  const [name, setName] = useState('');
-  const [result, setResult] = useState<AttendanceResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [selectedPiece, setSelectedPiece] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [uploadMessage, setUploadMessage] = useState('');
-  const [progress, setProgress] = useState<number | null>(null);
+  // -------------------- 상태 --------------------
+  const [name,            setName]         = useState('');
+  const [result,          setResult]       = useState<Record<string, SheetInfo> | null>(null);
+  const [loading,         setLoading]      = useState(false);
+  const [error,           setError]        = useState('');
 
-  const pieces = ['취타', '미락흘', '도드리', '축제', '플투스'];
+  // 업로드용
+  const [selectedPiece,   setSelectedPiece] = useState('');
+  const [file,            setFile]          = useState<File | null>(null);
+  const [uploadMessage,   setUploadMessage] = useState('');
+  const [progress,        setProgress]      = useState<number | null>(null);
 
-  /** 출결(제출 개수) 조회 */
+  // -------------------- 함수: 출결 조회 --------------------
   const fetchAttendance = async () => {
     if (!name.trim()) return;
 
@@ -39,11 +41,10 @@ export default function Home() {
     setResult(null);
 
     try {
-      const res = await fetch(`/api/attendance?name=${encodeURIComponent(name)}`);
+      const res  = await fetch(`/api/attendance?name=${encodeURIComponent(name)}`);
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.error || '조회 실패');
-      setResult(data as AttendanceResult);
+      setResult(data);
     } catch (err: any) {
       setError(err.message || 'Unknown error');
     } finally {
@@ -51,7 +52,7 @@ export default function Home() {
     }
   };
 
-  /** Google Drive Resumable Upload */
+  // -------------------- 함수: Google Drive Resumable Upload --------------------
   const handleUpload = async () => {
     if (!file || !selectedPiece || !name.trim()) {
       setUploadMessage('이름, 곡명, 파일을 모두 선택해주세요.');
@@ -62,7 +63,7 @@ export default function Home() {
       setUploadMessage('토큰 요청 중...');
       setProgress(null);
 
-      /** 1️⃣ 토큰 + 폴더 ID 요청 (몇 KB 이내) */
+      // 1️⃣ 토큰 + 폴더 ID 요청 (경량)
       const tokenRes = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -71,7 +72,7 @@ export default function Home() {
       const { access_token, folderId, error } = await tokenRes.json();
       if (!tokenRes.ok) throw new Error(error || '토큰 요청 실패');
 
-      /** 2️⃣ Resumable 세션 시작 */
+      // 2️⃣ Resumable 세션 시작
       setUploadMessage('세션 생성 중...');
       const sessionRes = await fetch(
         'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
@@ -91,7 +92,7 @@ export default function Home() {
       const uploadUrl = sessionRes.headers.get('location');
       if (!uploadUrl) throw new Error('Resumable 세션 URL 획득 실패');
 
-      /** 3️⃣ 실제 파일 업로드 (수십 MB OK) */
+      // 3️⃣ 실제 파일 업로드
       setUploadMessage('업로드 중...');
 
       await new Promise<void>((resolve, reject) => {
@@ -103,7 +104,7 @@ export default function Home() {
             setProgress(Math.round((evt.loaded / evt.total) * 100));
           }
         };
-        xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(xhr.statusText)));
+        xhr.onload  = () => (xhr.status < 300 ? resolve() : reject(new Error(xhr.statusText)));
         xhr.onerror = () => reject(new Error('XHR 오류'));
         xhr.send(file);
       });
@@ -116,6 +117,7 @@ export default function Home() {
     }
   };
 
+  // -------------------- UI --------------------
   return (
     <main className="p-8 max-w-xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold">합주 음원 제출 시스템 🎶</h1>
@@ -138,20 +140,20 @@ export default function Home() {
 
       {/* 조회 결과 / 오류 표시 */}
       {error && <p className="text-red-500">{error}</p>}
+
       {result && (
         <div>
           <h2 className="text-xl font-semibold mt-4 mb-2">제출해야 할 곡 수 🎵</h2>
           <ul className="list-disc pl-6 space-y-1">
-            {Object.entries(result).map(([piece, { total, breakdown }]) => {
-              // 항목별 문자열 만들기 → 예) "일반 1, 고정 1, 결석 1, 지각 2"
+            {Object.entries(result).map(([piece, { required, breakdown }]) => {
               const detail = Object.entries(breakdown)
-                .filter(([, v]) => v && v > 0)
-                .map(([k, v]) => `${k} ${v}`)
+                .filter(([, v]) => v > 0)
+                .map(([k, v]) => `${LABEL[k]} ${v}`)
                 .join(', ');
               return (
                 <li key={piece}>
-                  <strong>{piece}</strong> : {total}개
-                  {detail && ` (${detail})`}
+                  <strong>{piece}</strong>: {required}개{' '}
+                  <span className="text-gray-600">({detail})</span>
                 </li>
               );
             })}
@@ -169,7 +171,7 @@ export default function Home() {
           className="border p-2 w-full mb-2 rounded"
         >
           <option value="">곡 선택</option>
-          {pieces.map((p) => (
+          {PIECES.map((p) => (
             <option key={p} value={p}>{p}</option>
           ))}
         </select>
