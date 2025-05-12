@@ -5,9 +5,22 @@
 
 import { useState } from 'react';
 
+/** ─── 새 타입 정의 ───────────────────────────── */
+type Breakdown = {
+  일반?: number;
+  고정?: number;
+  결석?: number;
+  지각?: number;
+};
+type AttendanceResult = Record<
+  string,                // 곡명
+  { total: number; breakdown: Breakdown }
+>;
+/** ───────────────────────────────────────────── */
+
 export default function Home() {
   const [name, setName] = useState('');
-  const [result, setResult] = useState<Record<string, number> | null>(null);
+  const [result, setResult] = useState<AttendanceResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedPiece, setSelectedPiece] = useState('');
@@ -30,7 +43,7 @@ export default function Home() {
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.error || '조회 실패');
-      setResult(data);
+      setResult(data as AttendanceResult);
     } catch (err: any) {
       setError(err.message || 'Unknown error');
     } finally {
@@ -128,12 +141,20 @@ export default function Home() {
       {result && (
         <div>
           <h2 className="text-xl font-semibold mt-4 mb-2">제출해야 할 곡 수 🎵</h2>
-          <ul className="list-disc pl-6">
-            {Object.entries(result).map(([곡명, 개수]) => (
-              <li key={곡명}>
-                <strong>{곡명}</strong>: {개수}개
-              </li>
-            ))}
+          <ul className="list-disc pl-6 space-y-1">
+            {Object.entries(result).map(([piece, { total, breakdown }]) => {
+              // 항목별 문자열 만들기 → 예) "일반 1, 고정 1, 결석 1, 지각 2"
+              const detail = Object.entries(breakdown)
+                .filter(([, v]) => v && v > 0)
+                .map(([k, v]) => `${k} ${v}`)
+                .join(', ');
+              return (
+                <li key={piece}>
+                  <strong>{piece}</strong> : {total}개
+                  {detail && ` (${detail})`}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
