@@ -19,10 +19,13 @@ const PIECES = ['취타', '미락흘', '도드리', '축제', '플투스'] as co
 type Breakdown = Record<'고정결석계' | '일반결석계' | '결석' | '지각', number>;
 type SheetInfo = { required: number; breakdown: Breakdown };
 
+type SheetInfoWithUpload = SheetInfo & { submitted: number };
+
+
 export default function Home() {
   // -------------------- 상태 --------------------
   const [name,            setName]         = useState('');
-  const [result,          setResult]       = useState<Record<string, SheetInfo> | null>(null);
+  const [result,          setResult]       = useState<Record<string, SheetInfoWithUpload> | null>(null);
   const [loading,         setLoading]      = useState(false);
   const [error,           setError]        = useState('');
 
@@ -32,7 +35,8 @@ export default function Home() {
   const [uploadMessage,   setUploadMessage] = useState('');
   const [progress,        setProgress]      = useState<number | null>(null);
 
-  // -------------------- 함수: 출결 조회 --------------------
+
+  // -------------------- 함수: 출결 + 업로드 현황 조회 --------------------
   const fetchAttendance = async () => {
     if (!name.trim()) return;
 
@@ -41,10 +45,26 @@ export default function Home() {
     setResult(null);
 
     try {
-      const res  = await fetch(`/api/attendance?name=${encodeURIComponent(name)}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '조회 실패');
-      setResult(data);
+    // ✅ 출결(스프레드시트) + 업로드(Drive) 두 API를 병렬 호출
+      const [attRes, subRes] = await Promise.all([
+        fetch(`/api/attendance?name=${encodeURIComponent(name)}`),
+        fetch(`/api/submissions?name=${encodeURIComponent(name)}`),
+      ]);
+
+      const [attData, subData] = await Promise.all([attRes.json(), subRes.json()]);
+      if (!attRes.ok) throw new Error(attData.error || '출결 조회 실패');
+      if (!subRes.ok) throw new Error(subData.error || '업로드 조회 실패');
+
+      /* attData: { [piece]: { required, breakdown } }
+        subData: { [piece]: number } */
+      const merged: Record<string, SheetInfoWithUpload> = Object.fromEntries(
+        Object.entries(attData as Record<string, SheetInfo>).map(
+          ([piece, info]) => [
+            piece,
+          { ...info, submitted: subData[piece] ?? 0 },
+        ]),
+      );
+      setResult(merged);
     } catch (err: any) {
       setError(err.message || 'Unknown error');
     } finally {
@@ -123,6 +143,7 @@ export default function Home() {
       <h1 className="text-2xl font-bold">합주 음원 제출 시스템 🎶</h1>
 
       {/* 이름 입력 & 조회 버튼 */}
+      {error && <p className="mt-2 text-red-500">{error}</p>}
       <input
         type="text"
         value={name}
@@ -139,24 +160,38 @@ export default function Home() {
       </button>
 
       {/* 조회 결과 / 오류 표시 */}
-      {error && <p className="text-red-500">{error}</p>}
-
       {result && (
         <div>
-          <h2 className="text-xl font-semibold mt-4 mb-2">제출해야 할 곡 수 🎵</h2>
+          <h2 className="text-xl font-semibold mt-4 mb-2">
+            제출 현황&nbsp;🎵
+          </h2>
+
           <ul className="list-disc pl-6 space-y-1">
-            {Object.entries(result).map(([piece, { required, breakdown }]) => {
-              const detail = Object.entries(breakdown)
-                .filter(([, v]) => v > 0)
-                .map(([k, v]) => `${LABEL[k]} ${v}`)
-                .join(', ');
-              return (
-                <li key={piece}>
-                  <strong>{piece}</strong>: {required}개{' '}
-                  <span className="text-gray-600">({detail})</span>
-                </li>
-              );
-            })}
+            {Object.entries(result).map(
+              // 🔹 submitted까지 구조 분해
+              ([piece, { required, submitted, breakdown }]) => {
+                const detail = Object.entries(breakdown)
+                  .filter(([, v]) => v > 0)
+                  .map(([k, v]) => `${LABEL[k]} ${v}`)
+                  .join(', ');
+
+                // 남은 개수(필요-제출)가 0이면 초록, 그 외 빨강
+                const remaining = required - submitted;
+                const remainColor =
+                  remaining === 0 ? 'text-green-600' : 'text-red-600';
+
+                return (
+                  <li key={piece}>
+                    <strong>{piece}</strong> :&nbsp;
+                    <span className={remainColor}>
+                      남은 {remaining}개&nbsp;
+                    </span>
+                    (필요 {required} / 제출 {submitted})&nbsp;
+                    <span className="text-gray-600">({detail})</span>
+                  </li>
+                );
+              },
+            )}
           </ul>
         </div>
       )}
