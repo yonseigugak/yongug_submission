@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     for (const sheetName of SHEET_NAMES) {
       const { data } = await sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID,
-        range: `${sheetName}!A2:G`,
+        range: `${sheetName}!A2:H`,
       });
 
       const rows = data.values ?? [];
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 
       for (const row of rows) {
         const 이름   = row[1];   // B열
-        const 출결 = row[3];   // D열
+        const 출결 = row[4];   // E열
         if (이름 === name && cnt.hasOwnProperty(출결)) {
           cnt[출결 as keyof typeof cnt] += 1;
         }
