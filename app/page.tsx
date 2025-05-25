@@ -29,6 +29,8 @@ export default function Home() {
   const [loading,         setLoading]      = useState(false);
   const [error,           setError]        = useState('');
 
+  const [uploading,       setUploading]    = useState(false);
+
   // 업로드용
   const [selectedPiece,   setSelectedPiece] = useState('');
   const [file,            setFile]          = useState<File | null>(null);
@@ -74,12 +76,14 @@ export default function Home() {
 
   // -------------------- 함수: Google Drive Resumable Upload --------------------
   const handleUpload = async () => {
+    if (uploading) return;                             // ⛔ 이미 진행 중
     if (!file || !selectedPiece || !name.trim()) {
       setUploadMessage('이름, 곡명, 파일을 모두 선택해주세요.');
       return;
     }
 
     try {
+      setUploading(true);                              // 🔒 잠금 시작
       setUploadMessage('토큰 요청 중...');
       setProgress(null);
 
@@ -134,6 +138,8 @@ export default function Home() {
       setSelectedPiece('');
     } catch (err: any) {
       setUploadMessage(`❌ 업로드 실패: ${err.message}`);
+    } finally {
+      setUploading(false);
     }
   };
 
