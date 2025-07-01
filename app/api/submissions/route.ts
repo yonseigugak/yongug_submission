@@ -4,11 +4,16 @@
 // =============================================
 import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
+import { getSheetNames } from '@/lib/getSheetNames'; 
+
 
 const PARENT_FOLDER_ID = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID!;
-const PIECES = ['취타', '미락흘', '도드리', '축제', '플투스'] as const;
+//const PIECES = ['취타', '미락흘', '도드리', '축제', '플투스'] as const;
 
 export async function GET(req: NextRequest) {
+
+  const sheetNames = await getSheetNames();
+
   try {
     const name = new URL(req.url).searchParams.get('name')?.trim();
     if (!name) {
@@ -28,7 +33,7 @@ export async function GET(req: NextRequest) {
     const counts: Record<string, number> = {};
 
     // 곡 폴더들을 순회하며 파일 개수 집계
-    for (const piece of PIECES) {
+    for (const piece of sheetNames) {
       // ① 곡 전용 폴더 ID 찾기
       const { data: folderList } = await drive.files.list({
         q: `mimeType='application/vnd.google-apps.folder' and name='${piece}' and '${PARENT_FOLDER_ID}' in parents and trashed=false`,

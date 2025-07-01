@@ -1,8 +1,9 @@
 import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
+import { getSheetNames } from '@/lib/getSheetNames'; 
 
 const SHEET_ID   = process.env.GOOGLE_SHEETS_SHEET_ID!;
-const SHEET_NAMES = ['취타', '미락흘', '도드리', '축제', '플투스'] as const;
+//const SHEET_NAMES = ['취타', '미락흘', '도드리', '축제', '플투스'] as const;
 
 const RULES: Record<string, number> = {
   '고정결석계': 1,
@@ -19,6 +20,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing name' }, { status: 400 });
   }
 
+  const sheetNames = await getSheetNames();
+
   try {
     const auth = new google.auth.GoogleAuth({
       credentials: {
@@ -29,12 +32,13 @@ export async function GET(req: NextRequest) {
     });
 
     const sheets  = google.sheets({ version: 'v4', auth });
-    const results: Record<
-      (typeof SHEET_NAMES)[number],
-      { required: number; breakdown: Record<string, number> }
-    > = {} as any;
 
-    for (const sheetName of SHEET_NAMES) {
+    const results: Record<
+      string,
+      { required: number; breakdown: Record<string, number> }
+    > = {};
+
+    for (const sheetName of sheetNames) {
       const { data } = await sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID,
         range: `${sheetName}!A2:H`,

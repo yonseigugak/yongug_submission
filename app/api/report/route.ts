@@ -3,13 +3,15 @@
 // =============================================
 import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
+import { getSheetNames } from '@/lib/getSheetNames'; 
+
 
 // Vercel 기본 Edge Runtime 대신 Node 런타임이 필요
 export const runtime = 'nodejs';
 
 /* ───── 환경 변수 ───── */
 const SHEET_ID    = process.env.GOOGLE_SHEETS_SHEET_ID!;
-const SHEET_NAMES = ['취타', '미락흘', '도드리', '축제', '플투스'] as const;
+//const SHEET_NAMES = ['취타', '미락흘', '도드리', '축제', '플투스'] as const;
 
 // 서비스 계정 키는 두 가지 이름 중 하나만 있어도 동작하게
 const CLIENT_EMAIL =
@@ -29,6 +31,8 @@ const AUDIO_FINE  = 3_000;  // 미제출 음원 1개당
 type Counts = { 고정결석계: number; 일반결석계: number; 결석: number; 지각: number };
 
 export async function GET(_req: NextRequest) {
+
+  const sheetNames = await getSheetNames();
   try {
     if (!CLIENT_EMAIL || !PRIVATE_KEY) {
       throw new Error('Google 서비스 계정 환경변수가 없습니다.');
@@ -51,10 +55,10 @@ export async function GET(_req: NextRequest) {
     /* ───────── 1) 출결 “곡별” 집계 ───────── */
     const byNamePiece: Record<
       string,
-      Record<(typeof SHEET_NAMES)[number], Counts>
+      Record<(typeof sheetNames)[number], Counts>
     > = {};
 
-    for (const sheetName of SHEET_NAMES) {
+    for (const sheetName of sheetNames) {
       const { data } = await sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID,
         range: `${sheetName}!A2:H`,
