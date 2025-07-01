@@ -3,7 +3,7 @@
 // =============================
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 /** 항목 축약 라벨 */
 const LABEL: Record<string, string> = {
@@ -14,7 +14,8 @@ const LABEL: Record<string, string> = {
 };
 
 /** 스프레드시트에 존재하는 곡명 시트 */
-const PIECES = ['취타', '미락흘', '도드리', '축제', '플투스'] as const;
+//const PIECES = ['취타', '미락흘', '도드리', '축제', '플투스'] as const;
+const [pieces, setPieces] = useState<string[]>([]);
 
 type Breakdown = Record<'고정결석계' | '일반결석계' | '결석' | '지각', number>;
 type SheetInfo = { required: number; breakdown: Breakdown };
@@ -36,6 +37,21 @@ export default function Home() {
   const [file,            setFile]          = useState<File | null>(null);
   const [uploadMessage,   setUploadMessage] = useState('');
   const [progress,        setProgress]      = useState<number | null>(null);
+
+  /* ② ── 옵션 fetch(useEffect) ── */
+  useEffect(() => {
+    (async () => {
+      try {
+        const res   = await fetch('/api/options');        // { songs, timeSlots }
+        const { songs } = (await res.json()) as { songs: string[] };
+        setPieces(songs);                                 // <-- 곡 목록 저장
+      } catch (err) {
+        console.error(err);
+        alert('곡 목록을 불러오지 못했습니다.');
+      }
+    })();
+  }, []);   // <- 컴포넌트 최초 마운트 때 한 번 실행
+
 
 
   // -------------------- 함수: 출결 + 업로드 현황 조회 --------------------
@@ -210,9 +226,10 @@ export default function Home() {
           value={selectedPiece}
           onChange={(e) => setSelectedPiece(e.target.value)}
           className="border p-2 w-full mb-2 rounded"
+          disabled={pieces.length ===0 }
         >
           <option value="">곡 선택</option>
-          {PIECES.map((p) => (
+          {pieces.map((p) => (
             <option key={p} value={p}>{p}</option>
           ))}
         </select>
