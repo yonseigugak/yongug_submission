@@ -1,6 +1,8 @@
 import { google } from 'googleapis';
 import { NextRequest } from 'next/server';
 
+export const runtime = 'nodejs';
+
 export async function GET(_req: NextRequest) {
   try {
     /* 1) 구글 인증 */
