@@ -26,7 +26,7 @@ const FOLDER_IDS: Record<string, string> =
 
 /* ───── 단가 상수 ───── */
 const ABSENT_FINE = 3_000;  // 결석 1회당
-const AUDIO_FINE  = 3_000;  // 미제출 음원 1개당
+const AUDIO_FINE  = 4_000;  // 미제출 음원 1개당
 
 /* ───── 타입 ───── */
 type Counts = { 고정결석계: number; 일반결석계: number; 결석: number; 지각: number };
