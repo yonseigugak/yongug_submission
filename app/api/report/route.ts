@@ -10,6 +10,7 @@ import { getSheetNames } from '@/lib/getSheetNames';
 export const runtime = 'nodejs';
 
 /* ───── 환경 변수 ───── */
+const SECRET = process.env.REPORT_SECRET;
 const SHEET_ID    = process.env.GOOGLE_SHEETS_SHEET_ID!;
 //const SHEET_NAMES = ['취타', '미락흘', '도드리', '축제', '플투스'] as const;
 
@@ -30,7 +31,14 @@ const AUDIO_FINE  = 3_000;  // 미제출 음원 1개당
 /* ───── 타입 ───── */
 type Counts = { 고정결석계: number; 일반결석계: number; 결석: number; 지각: number };
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+
+  const key =
+    req.headers.get('x-report-secret') ??
+    req.nextUrl.searchParams.get('key');
+  if (!SECRET || key !== SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   const sheetNames = await getSheetNames();
   try {

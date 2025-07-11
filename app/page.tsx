@@ -32,6 +32,7 @@ export default function Home() {
   const [error,           setError]        = useState('');
 
   const [uploading,       setUploading]    = useState(false);
+  const [secret,          setSecret]       = useState('');
 
   // 업로드용
   const [selectedPiece,   setSelectedPiece] = useState('');
@@ -53,7 +54,23 @@ export default function Home() {
     })();
   }, []);   // <- 컴포넌트 최초 마운트 때 한 번 실행
 
+  /* ⑴ 벌금 정산 실행 함수 */
+  const runReport = async () => {
+    const key = secret || window.prompt('관리자 비밀번호') || '';
+    if (!key) return;
 
+    try {
+      const res = await fetch('/api/report', {
+        headers: { 'x-report-secret': key },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      alert(`✅ 완료! ${data.rows}명 반영`);
+      setSecret(key);                       // 세션 동안 재사용
+    } catch (e: any) {
+      alert(`❌ 실패: ${e.message}`);
+    }
+  };
 
   // -------------------- 함수: 출결 + 업로드 현황 조회 --------------------
   const fetchAttendance = async () => {
@@ -258,6 +275,16 @@ export default function Home() {
 
         {uploadMessage && <p className="mt-2 text-sm">{uploadMessage}</p>}
         {progress !== null && <p className="text-sm text-gray-600">{progress}%</p>}
+      </div>
+        {/* ───────── 관리자 전용: 벌금 정산 ───────── */}
+      <div className="border-t pt-6">
+        <h2 className="text-lg font-semibold mb-3">관리자 기능</h2>
+        <button
+          onClick={runReport}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded"
+        >
+          벌금 정산 시트 생성 / 갱신
+        </button>
       </div>
     </main>
   );
