@@ -169,7 +169,14 @@ export default function Home() {
             resolve();
             return;
           }
-          console.error('Drive error', xhr.status, xhr.responseText); // 🔍 상세 로그
+          let detail = xhr.responseText;
+          try { detail = JSON.parse(xhr.responseText); } catch {}
+
+          console.error('Drive upload error', {
+            status: xhr.status, 
+            statusText: xhr.statusText,
+            detail,
+        }); // 🔍 상세 로그
           reject(new Error(`${xhr.status} ${xhr.statusText}`));
         };
         xhr.onerror = () => reject(new Error('XHR 오류'));

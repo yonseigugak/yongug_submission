@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
         fields: 'id',
       });
       folderId = folderCreate.data.id!;
+      console.log('folderId', folderId);
     }
 
     return NextResponse.json({ access_token, folderId });
