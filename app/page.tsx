@@ -162,7 +162,14 @@ export default function Home() {
             setProgress(Math.round((evt.loaded / evt.total) * 100));
           }
         };
-        xhr.onload  = () => (xhr.status < 300 ? resolve() : reject(new Error(xhr.statusText)));
+        xhr.onload = () => {
+          if (xhr.status < 300) {
+            resolve();
+            return;
+          }
+          console.error('Drive error', xhr.status, xhr.responseText); // 🔍 상세 로그
+          reject(new Error(`${xhr.status} ${xhr.statusText}`));
+        };
         xhr.onerror = () => reject(new Error('XHR 오류'));
         xhr.send(file);
       });

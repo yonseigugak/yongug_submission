@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
 
     if (!folderId) {
       const folderCreate = await drive.files.create({
+        supportsAllDrives: true,
         requestBody: {
           name: piece,
           mimeType: 'application/vnd.google-apps.folder',
