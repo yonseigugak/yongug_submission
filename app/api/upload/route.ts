@@ -1,4 +1,4 @@
-// app/api/upload/route.ts - OAuth 2.0 방식
+// app/api/upload/route.ts - 서비스 계정 방식으로 변경
 import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -12,20 +12,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'piece is required' }, { status: 400 });
     }
 
-    // OAuth 2.0 클라이언트 설정
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID!,
-      process.env.GOOGLE_CLIENT_SECRET!,
-      process.env.GOOGLE_REDIRECT_URI!
-    );
-
-    // 저장된 토큰 사용 (실제로는 데이터베이스에서 가져와야 함)
-    oauth2Client.setCredentials({
-      access_token: process.env.GOOGLE_ACCESS_TOKEN!,
-      refresh_token: process.env.GOOGLE_REFRESH_TOKEN!,
+    // 서비스 계정 방식으로 변경 (다른 API 파일들과 동일하게)
+    const auth = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL!,
+        private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
+      },
+      scopes: [
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/drive'
+      ],
     });
 
-    const drive = google.drive({ version: 'v3', auth: oauth2Client });
+    const drive = google.drive({ version: 'v3', auth });
     
     // 곡 폴더 검색
     const { data } = await drive.files.list({
@@ -41,17 +40,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 액세스 토큰 갱신 및 반환
-    const { credentials } = await oauth2Client.refreshAccessToken();
+    // 서비스 계정 액세스 토큰 생성
+    const accessToken = await auth.getAccessToken();
     
+    if (!accessToken) {
+      throw new Error('액세스 토큰을 가져올 수 없습니다.');
+    }
+
     return NextResponse.json({ 
-      access_token: credentials.access_token, 
+      access_token: accessToken, 
       folderId: folder.id,
       folderName: folder.name 
     });
 
   } catch (err: any) {
-    console.error('OAuth upload error:', err);
+    console.error('Upload token error:', err);
     return NextResponse.json(
       { error: `토큰 생성 실패: ${err.message}` }, 
       { status: 500 }
