@@ -157,6 +157,8 @@ export default function Home() {
         const xhr = new XMLHttpRequest();
         xhr.open('PUT', uploadUrl);
         xhr.setRequestHeader('Content-Type', file.type);
+        xhr.setRequestHeader('X-Upload-Content-Type', file.type);   // ⬅︎ 추가
+        xhr.setRequestHeader('X-Upload-Content-Length', String(file.size));
         xhr.upload.onprogress = (evt) => {
           if (evt.lengthComputable) {
             setProgress(Math.round((evt.loaded / evt.total) * 100));
