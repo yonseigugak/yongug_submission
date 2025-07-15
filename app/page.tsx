@@ -109,89 +109,124 @@ export default function Home() {
   };
 
   // -------------------- 함수: Google Drive Resumable Upload --------------------
-  const handleUpload = async () => {
-    if (uploading) return;                             // ⛔ 이미 진행 중
-    if (!file || !selectedPiece || !name.trim()) {
-      setUploadMessage('이름, 곡명, 파일을 모두 선택해주세요.');
-      return;
-    }
+// app/page.tsx의 handleUpload 함수 개선판
+const handleUpload = async () => {
+  if (uploading) return;
+  if (!file || !selectedPiece || !name.trim()) {
+    setUploadMessage('이름, 곡명, 파일을 모두 선택해주세요.');
+    return;
+  }
 
-    try {
-      setUploading(true);                              // 🔒 잠금 시작
-      setUploadMessage('토큰 요청 중...');
-      setProgress(null);
+  try {
+    setUploading(true);
+    setUploadMessage('토큰 요청 중...');
+    setProgress(null);
 
-      // 1️⃣ 토큰 + 폴더 ID 요청 (경량)
-      const tokenRes = await fetch('/api/upload', {
+    // 1️⃣ 토큰 + 폴더 ID 요청
+    const tokenRes = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ piece: selectedPiece }),
+    });
+    const { access_token, folderId, error } = await tokenRes.json();
+    if (!tokenRes.ok) throw new Error(error || '토큰 요청 실패');
+
+    // 2️⃣ Resumable 세션 시작
+    setUploadMessage('세션 생성 중...');
+    const fileName = `${name}_${selectedPiece}_${Date.now()}.mp3`;
+    
+    const sessionRes = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
+      {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ piece: selectedPiece }),
-      });
-      const { access_token, folderId, error } = await tokenRes.json();
-      if (!tokenRes.ok) throw new Error(error || '토큰 요청 실패');
-
-      // 2️⃣ Resumable 세션 시작
-      setUploadMessage('세션 생성 중...');
-      const sessionRes = await fetch(
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: `${name}_${selectedPiece}_${Date.now()}.mp3`,
-            parents: [folderId],
-          }),
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+          'Content-Type': 'application/json',
+          'X-Upload-Content-Type': file.type || 'audio/mpeg',
+          'X-Upload-Content-Length': String(file.size),
         },
-      );
+        body: JSON.stringify({
+          name: fileName,
+          parents: [folderId],
+        }),
+      },
+    );
 
-      const uploadUrl = sessionRes.headers.get('location');
-      if (!uploadUrl) throw new Error('Resumable 세션 URL 획득 실패');
-
-      // 3️⃣ 실제 파일 업로드
-      setUploadMessage('업로드 중...');
-
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('PUT', uploadUrl);
-        xhr.setRequestHeader('Content-Type', file.type);
-        xhr.setRequestHeader('X-Upload-Content-Type', file.type);   // ⬅︎ 추가
-        xhr.setRequestHeader('X-Upload-Content-Length', String(file.size));
-        xhr.upload.onprogress = (evt) => {
-          if (evt.lengthComputable) {
-            setProgress(Math.round((evt.loaded / evt.total) * 100));
-          }
-        };
-        xhr.onload = () => {
-          if (xhr.status < 300) {
-            resolve();
-            return;
-          }
-          let detail = xhr.responseText;
-          try { detail = JSON.parse(xhr.responseText); } catch {}
-
-          console.error('Drive upload error', {
-            status: xhr.status, 
-            statusText: xhr.statusText,
-            detail,
-        }); // 🔍 상세 로그
-          reject(new Error(`${xhr.status} ${xhr.statusText}`));
-        };
-        xhr.onerror = () => reject(new Error('XHR 오류'));
-        xhr.send(file);
-      });
-
-      setUploadMessage('✅ 업로드 성공!');
-      setFile(null);
-      setSelectedPiece('');
-    } catch (err: any) {
-      setUploadMessage(`❌ 업로드 실패: ${err.message}`);
-    } finally {
-      setUploading(false);
+    if (!sessionRes.ok) {
+      const errorText = await sessionRes.text();
+      console.error('Session creation failed:', errorText);
+      throw new Error(`세션 생성 실패: ${sessionRes.status} ${sessionRes.statusText}`);
     }
-  };
+
+    const uploadUrl = sessionRes.headers.get('location');
+    if (!uploadUrl) throw new Error('Resumable 세션 URL 획득 실패');
+
+    // 3️⃣ 실제 파일 업로드 (개선된 버전)
+    setUploadMessage('업로드 중...');
+
+    const uploadResult = await new Promise<any>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', file.type || 'audio/mpeg');
+      
+      xhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable) {
+          setProgress(Math.round((evt.loaded / evt.total) * 100));
+        }
+      };
+      
+      xhr.onload = () => {
+        console.log('Upload response:', {
+          status: xhr.status,
+          statusText: xhr.statusText,
+          responseText: xhr.responseText
+        });
+        
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const result = JSON.parse(xhr.responseText);
+            resolve(result);
+          } catch (e) {
+            // 응답이 JSON이 아닐 수도 있음
+            resolve({ success: true });
+          }
+        } else {
+          let errorDetail = xhr.responseText;
+          try {
+            const errorObj = JSON.parse(xhr.responseText);
+            errorDetail = errorObj.error?.message || errorObj.message || xhr.responseText;
+          } catch {}
+          
+          reject(new Error(`업로드 실패: ${xhr.status} ${xhr.statusText} - ${errorDetail}`));
+        }
+      };
+      
+      xhr.onerror = () => reject(new Error('네트워크 오류'));
+      xhr.ontimeout = () => reject(new Error('업로드 타임아웃'));
+      xhr.timeout = 300000; // 5분 타임아웃
+      
+      xhr.send(file);
+    });
+
+    console.log('Upload successful:', uploadResult);
+    setUploadMessage('✅ 업로드 성공!');
+    setFile(null);
+    setSelectedPiece('');
+    setProgress(null);
+    
+    // 업로드 후 출결 현황 새로고침
+    if (name.trim()) {
+      await fetchAttendance();
+    }
+    
+  } catch (err: any) {
+    console.error('Upload error:', err);
+    setUploadMessage(`❌ 업로드 실패: ${err.message}`);
+    setProgress(null);
+  } finally {
+    setUploading(false);
+  }
+};
 
   // -------------------- UI --------------------
   return (
