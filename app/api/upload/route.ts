@@ -1,4 +1,4 @@
-// app/api/upload/route.ts 개선판
+// app/api/upload/route.ts - OAuth 2.0 방식
 import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -12,73 +12,48 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'piece is required' }, { status: 400 });
     }
 
-    // 1) 서비스 계정 인증 (더 구체적인 권한)
-    const auth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL!,
-        private_key : process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-      },
-      scopes: [
-        'https://www.googleapis.com/auth/drive.file',
-        'https://www.googleapis.com/auth/drive.metadata.readonly'
-      ],
+    // OAuth 2.0 클라이언트 설정
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID!,
+      process.env.GOOGLE_CLIENT_SECRET!,
+      process.env.GOOGLE_REDIRECT_URI!
+    );
+
+    // 저장된 토큰 사용 (실제로는 데이터베이스에서 가져와야 함)
+    oauth2Client.setCredentials({
+      access_token: process.env.GOOGLE_ACCESS_TOKEN!,
+      refresh_token: process.env.GOOGLE_REFRESH_TOKEN!,
     });
 
-    const drive = google.drive({ version: 'v3', auth });
+    const drive = google.drive({ version: 'v3', auth: oauth2Client });
     
-    // 2) 곡 폴더 검색 및 권한 확인
-    console.log(`Looking for folder: ${piece} in parent: ${PARENT_FOLDER_ID}`);
-    
+    // 곡 폴더 검색
     const { data } = await drive.files.list({
       q: `mimeType='application/vnd.google-apps.folder' and name='${piece}' and '${PARENT_FOLDER_ID}' in parents and trashed=false`,
-      fields: 'files(id, name, permissions)',
-      spaces: 'drive',
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true,
+      fields: 'files(id, name)',
     });
-
-    console.log('Folder search result:', data.files);
 
     const folder = data.files?.[0];
     if (!folder || !folder.id) {
       return NextResponse.json(
-        { error: `곡 폴더 '${piece}'를 찾을 수 없습니다. 관리자에게 폴더를 만들어 달라고 요청하세요.` },
-        { status: 404 },
+        { error: `곡 폴더 '${piece}'를 찾을 수 없습니다.` },
+        { status: 404 }
       );
     }
 
-    // 3) 폴더 권한 확인 (선택사항)
-    try {
-      const permissionCheck = await drive.files.get({
-        fileId: folder.id,
-        fields: 'permissions',
-        supportsAllDrives: true,
-      });
-      console.log('Folder permissions:', permissionCheck.data.permissions);
-    } catch (permError) {
-      console.warn('권한 확인 실패 (무시 가능):', permError);
-    }
-
-    // 4) 액세스 토큰 생성
-    const access_token = await auth.getAccessToken();
+    // 액세스 토큰 갱신 및 반환
+    const { credentials } = await oauth2Client.refreshAccessToken();
     
-    if (!access_token) {
-      throw new Error('액세스 토큰 생성 실패');
-    }
-
     return NextResponse.json({ 
-      access_token, 
+      access_token: credentials.access_token, 
       folderId: folder.id,
       folderName: folder.name 
     });
 
   } catch (err: any) {
-    console.error('upload token-provider error:', err);
+    console.error('OAuth upload error:', err);
     return NextResponse.json(
-      { 
-        error: `토큰 생성 실패: ${err.message}`,
-        details: err.stack
-      }, 
+      { error: `토큰 생성 실패: ${err.message}` }, 
       { status: 500 }
     );
   }
