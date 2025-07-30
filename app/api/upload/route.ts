@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
         client_email: process.env.GOOGLE_CLIENT_EMAIL!,
         private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
       },
+      projectId : 'ensemble-submission',
       scopes: ['https://www.googleapis.com/auth/drive',
                'https://www.googleapis.com/auth/drive.file'
       ],  // ← 원본과 동일하게 단순화
