@@ -5,24 +5,19 @@ import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSheetNames } from '@/lib/getSheetNames'; 
 
-
 // Vercel 기본 Edge Runtime 대신 Node 런타임이 필요
 export const runtime = 'nodejs';
 
 /* ───── 환경 변수 ───── */
 const SECRET = process.env.REPORT_SECRET;
-const SHEET_ID    = process.env.GOOGLE_SHEETS_SHEET_ID!;
-//const SHEET_NAMES = ['취타', '미락흘', '도드리', '축제', '플투스'] as const;
+const SHEET_ID = process.env.GOOGLE_SHEETS_SHEET_ID!;
+const PARENT_FOLDER_ID = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID!;
 
 // 서비스 계정 키는 두 가지 이름 중 하나만 있어도 동작하게
 const CLIENT_EMAIL =
   process.env.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_SHEETS_CLIENT_EMAIL;
 const PRIVATE_KEY  =
   process.env.GOOGLE_PRIVATE_KEY  ?? process.env.GOOGLE_SHEETS_PRIVATE_KEY;
-
-// 곡별 Google Drive 폴더 ID 매핑(JSON 문자열)
-const FOLDER_IDS: Record<string, string> =
-  JSON.parse(process.env.GOOGLE_DRIVE_FOLDER_IDS!);
 
 /* ───── 단가 상수 ───── */
 const ABSENT_FINE = 3_000;  // 결석 1회당
@@ -60,7 +55,7 @@ export async function GET(req: NextRequest) {
     const sheets = google.sheets({ version: 'v4', auth });
     const drive  = google.drive({ version: 'v3', auth });
 
-    /* ───────── 1) 출결 “곡별” 집계 ───────── */
+    /* ───────── 1) 출결 "곡별" 집계 ───────── */
     const byNamePiece: Record<
       string,
       Record<(typeof sheetNames)[number], Counts>
@@ -88,15 +83,28 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    /* ───────── 2) 업로드 집계 ───────── */
+    /* ───────── 2) 업로드 집계 (동적 폴더 검색 방식으로 변경) ───────── */
     const uploaded: Record<string, number> = {};
 
-    for (const [, folderId] of Object.entries(FOLDER_IDS)) {
+    // 각 곡별로 폴더를 동적으로 찾아서 파일 집계
+    for (const piece of sheetNames) {
+      // 곡 폴더 찾기
+      const { data: folderList } = await drive.files.list({
+        q: `mimeType='application/vnd.google-apps.folder' and name='${piece}' and '${PARENT_FOLDER_ID}' in parents and trashed=false`,
+        fields: 'files(id)',
+        spaces: 'drive',
+        pageSize: 1,
+      });
+
+      const folderId = folderList.files?.[0]?.id;
+      if (!folderId) continue;
+
+      // 해당 폴더의 모든 파일 조회
       let pageToken: string | undefined;
       do {
         const { data } = await drive.files.list({
-          q       : `'${folderId}' in parents and trashed = false`,
-          fields  : 'nextPageToken, files(name)',
+          q: `'${folderId}' in parents and trashed = false and mimeType!='application/vnd.google-apps.folder'`,
+          fields: 'nextPageToken, files(name)',
           pageToken,
         });
         for (const file of data.files ?? []) {
@@ -144,7 +152,7 @@ export async function GET(req: NextRequest) {
       ]);
     }
 
-    /* ───────── 4) “벌금_정산” 시트 덮어쓰기 ───────── */
+    /* ───────── 4) "벌금_정산" 시트 덮어쓰기 ───────── */
     const REPORT_TITLE = '벌금_정산';
     const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
 
