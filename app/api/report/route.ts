@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
     /* ───────── Google 인증 ───────── */
     const auth = new google.auth.GoogleAuth({
       credentials: {
+        projectId : 'ensemble-submission',
         client_email: CLIENT_EMAIL,
         private_key : PRIVATE_KEY.replace(/\\n/g, '\n'),
       },

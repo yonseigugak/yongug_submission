@@ -14,11 +14,11 @@ export async function POST(req: NextRequest) {
 
     // 🔐 서비스 계정 인증 (원본과 동일한 scope 사용)
     const auth = new google.auth.GoogleAuth({
+      projectId : 'ensemble-submission',
       credentials: {
         client_email: process.env.GOOGLE_CLIENT_EMAIL!,
         private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
       },
-      projectId : 'ensemble-submission',
       scopes: ['https://www.googleapis.com/auth/drive',
                'https://www.googleapis.com/auth/drive.file'
       ],  // ← 원본과 동일하게 단순화

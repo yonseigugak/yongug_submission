@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
     // 🔐 서비스 계정 인증
     const auth = new google.auth.GoogleAuth({
       credentials: {
+        projectId : 'ensemble-submission',
         client_email: process.env.GOOGLE_CLIENT_EMAIL!,
         private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
       },
