@@ -18,7 +18,9 @@ export async function POST(req: NextRequest) {
         client_email: process.env.GOOGLE_CLIENT_EMAIL!,
         private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
       },
-      scopes: ['https://www.googleapis.com/auth/drive'],  // ← 원본과 동일하게 단순화
+      scopes: ['https://www.googleapis.com/auth/drive',
+               'https://www.googleapis.com/auth/drive.file'
+      ],  // ← 원본과 동일하게 단순화
     });
 
     const drive = google.drive({ version: 'v3', auth });
