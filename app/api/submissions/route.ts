@@ -21,15 +21,17 @@ export async function GET(req: NextRequest) {
     }
 
     // 🔐 서비스 계정 인증
-    const auth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL!,
-        private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-      },
-      scopes: ['https://www.googleapis.com/auth/drive.metadata.readonly'],
+    const auth = new google.auth.OAuth2(
+      process.env.CLIENT_ID,
+      process.env.CLIENT_SECRET
+    );
+
+    auth.setCredentials({
+      refresh_token: process.env.REFRESH_TOKEN
     });
 
-    const drive = google.drive({ version: 'v3', auth });
+    const sheets  = google.sheets({ version: 'v4', auth });
+    const drive = google.drive({ version: 'v3', auth});
     const counts: Record<string, number> = {};
 
     // 곡 폴더들을 순회하며 파일 개수 집계

@@ -13,18 +13,17 @@ export async function POST(req: NextRequest) {
     }
 
     // 🔐 서비스 계정 인증 (원본과 동일한 scope 사용)
-    const auth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL!,
-        private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-      },
-      projectId : 'ensemble-submission',
-      scopes: ['https://www.googleapis.com/auth/drive',
-               'https://www.googleapis.com/auth/drive.file'
-      ],  // ← 원본과 동일하게 단순화
-    });
+    const auth = new google.auth.OAuth2(
+      process.env.CLIENT_ID,
+      process.env.CLIENT_SECRET
+    );
 
-    const drive = google.drive({ version: 'v3', auth });
+    //#auth.setCredentials({
+    //  refresh_token: process.env.REFRESH_TOKEN
+    //}); 
+
+    const sheets  = google.sheets({ version: 'v4', auth });
+    const drive = google.drive({ version: 'v3', auth});
     
     // 1️⃣ 곡 폴더 검색
     const { data } = await drive.files.list({
@@ -51,14 +50,15 @@ export async function POST(req: NextRequest) {
     }
 
     // 3️⃣ 액세스 토큰 생성
-    const accessToken = await auth.getAccessToken();
-    
-    if (!accessToken) {
-      throw new Error('액세스 토큰을 가져올 수 없습니다.');
+    const { token } = await auth.getAccessToken();
+
+    if (!token) {
+       throw new Error('엑세스 토큰을 가져올 수 없습니다.');
     }
+    
 
     return NextResponse.json({ 
-      access_token: accessToken, 
+      access_token: token, 
       folderId: folderId,
       folderName: folderName
     });

@@ -6,15 +6,17 @@ export const runtime = 'nodejs';
 export async function GET(_req: NextRequest) {
   try {
     /* 1) 구글 인증 */
-    const auth = new google.auth.GoogleAuth({
-      projectId: 'ensemble-submission',
-      credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL,
-        private_key:  process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      },
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+    const auth = new google.auth.OAuth2(
+      process.env.CLIENT_ID,
+      process.env.CLIENT_SECRET
+    );
+
+    auth.setCredentials({
+      refresh_token: process.env.REFRESH_TOKEN
     });
-    const sheets = google.sheets({ version: 'v4', auth });
+
+    const sheets  = google.sheets({ version: 'v4', auth });
+    const drive = google.drive({ version: 'v3', auth});
     const spreadsheetId = process.env.GOOGLE_SHEETS_SHEET_ID!;
 
     /* 2) CONFIG 탭 A열 = 곡명이라고 가정 */

@@ -42,18 +42,17 @@ export async function GET(req: NextRequest) {
     }
 
     /* ───────── Google 인증 ───────── */
-    const auth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: CLIENT_EMAIL,
-        private_key : PRIVATE_KEY.replace(/\\n/g, '\n'),
-      },
-      scopes: [
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/drive.readonly',
-      ],
+    const auth = new google.auth.OAuth2(
+      process.env.CLIENT_ID,
+      process.env.CLIENT_SECRET
+    );
+
+    auth.setCredentials({
+      refresh_token: process.env.REFRESH_TOKEN
     });
-    const sheets = google.sheets({ version: 'v4', auth });
-    const drive  = google.drive({ version: 'v3', auth });
+
+    const sheets  = google.sheets({ version: 'v4', auth });
+    const drive = google.drive({ version: 'v3', auth});
 
     /* ───────── 1) 출결 "곡별" 집계 ───────── */
     const byNamePiece: Record<
