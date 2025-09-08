@@ -18,9 +18,9 @@ export async function POST(req: NextRequest) {
       process.env.CLIENT_SECRET
     );
 
-    //#auth.setCredentials({
-    //  refresh_token: process.env.REFRESH_TOKEN
-    //}); 
+    auth.setCredentials({
+      refresh_token: process.env.REFRESH_TOKEN
+    }); 
 
     const sheets  = google.sheets({ version: 'v4', auth });
     const drive = google.drive({ version: 'v3', auth});
