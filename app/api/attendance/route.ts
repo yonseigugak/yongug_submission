@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSheetNames } from '@/lib/getSheetNames'; 
 
 const SHEET_ID   = process.env.GOOGLE_SHEETS_SHEET_ID!;
-//const SHEET_NAMES = ['취타', '미락흘', '도드리', '축제', '플투스'] as const;
+//const SHEET_NAMES = ['도드리', '상현도드리', '프론티어', '빛의향연', '푸른술래잡기'] as const;
 
 const RULES: Record<string, number> = {
   '고정결석계': 2,
