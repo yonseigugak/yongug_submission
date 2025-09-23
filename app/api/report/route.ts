@@ -20,8 +20,8 @@ const PRIVATE_KEY  =
   process.env.GOOGLE_PRIVATE_KEY  ?? process.env.GOOGLE_SHEETS_PRIVATE_KEY;
 
 /* ───── 단가 상수 ───── */
-const ABSENT_FINE = 5_000;  // 결석 1회당
-const AUDIO_FINE  = 3_000;  // 미제출 음원 1개당
+const ABSENT_FINE = 0;  // 결석 1회당
+const AUDIO_FINE  = 2_500;  // 미제출 음원 1개당
 
 /* ───── 타입 ───── */
 type Counts = { 고정결석계: number; 일반결석계: number; 결석: number; 지각: number };
@@ -133,7 +133,7 @@ export async function GET(req: NextRequest) {
         const lateAud = Math.floor(cnt.지각 / 2) * 2;
 
         requiredAud +=
-          cnt.고정결석계 * 1 +
+          cnt.고정결석계 * 2 +
           cnt.일반결석계 * 2 +
           cnt.결석       * 2 +
           lateAud;
