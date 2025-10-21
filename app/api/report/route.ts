@@ -13,11 +13,10 @@ const SECRET = process.env.REPORT_SECRET;
 const SHEET_ID = process.env.GOOGLE_SHEETS_SHEET_ID!;
 const PARENT_FOLDER_ID = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID!;
 
-// 서비스 계정 키는 두 가지 이름 중 하나만 있어도 동작하게
-const CLIENT_EMAIL =
-  process.env.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_SHEETS_CLIENT_EMAIL;
-const PRIVATE_KEY  =
-  process.env.GOOGLE_PRIVATE_KEY  ?? process.env.GOOGLE_SHEETS_PRIVATE_KEY;
+// OAuth2 환경 변수
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
 
 /* ───── 단가 상수 ───── */
 const ABSENT_FINE = 0;  // 결석 1회당
@@ -35,20 +34,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const sheetNames = await getSheetNames();
   try {
-    if (!CLIENT_EMAIL || !PRIVATE_KEY) {
-      throw new Error('Google 서비스 계정 환경변수가 없습니다.');
+    // OAuth2 환경 변수 체크 (수정됨)
+    if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN) {
+      throw new Error('Google OAuth2 환경변수가 없습니다.');
     }
+
+    const sheetNames = await getSheetNames();
 
     /* ───────── Google 인증 ───────── */
     const auth = new google.auth.OAuth2(
-      process.env.CLIENT_ID,
-      process.env.CLIENT_SECRET
+      CLIENT_ID,
+      CLIENT_SECRET
     );
 
     auth.setCredentials({
-      refresh_token: process.env.REFRESH_TOKEN
+      refresh_token: REFRESH_TOKEN
     });
 
     const sheets  = google.sheets({ version: 'v4', auth });
