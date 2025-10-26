@@ -114,6 +114,7 @@ export async function GET(req: NextRequest) {
         pageToken = data.nextPageToken ?? undefined;
       } while (pageToken);
     }
+    
 
     /* ───────── 3) 벌금·음원 계산 ───────── */
     const rows: any[][] = [
@@ -134,9 +135,9 @@ export async function GET(req: NextRequest) {
         const lateAud = Math.floor(cnt.지각 / 2) * 2;
 
         requiredAud +=
-          cnt.고정결석계 * 2 +
-          cnt.일반결석계 * 2 +
-          cnt.결석       * 2 +
+          cnt.고정결석계 * 1 +
+          cnt.일반결석계 * 1 +
+          cnt.결석       * 1 +
           lateAud;
       }
 

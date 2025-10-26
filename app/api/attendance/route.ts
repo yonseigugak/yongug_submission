@@ -6,9 +6,9 @@ const SHEET_ID   = process.env.GOOGLE_SHEETS_SHEET_ID!;
 //const SHEET_NAMES = ['도드리', '상현도드리', '프론티어', '빛의향연', '푸른술래잡기'] as const;
 
 const RULES: Record<string, number> = {
-  '고정결석계': 2,
-  '일반결석계': 2,
-  '결석':        2,
+  '고정결석계': 1,
+  '일반결석계': 1,
+  '결석':        1,
   // 지각은 2회당 2개. 따로 계산함
 };
 
