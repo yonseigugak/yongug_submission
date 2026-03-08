@@ -105,9 +105,7 @@ export async function GET(req: NextRequest) {
 
     /* ───────── 2) 업로드 집계 ───────── */
 
-git add .
-git commit -m "update nextjs"
-git push
+
     for (const piece of sheetNames) {
 
       const { data: folderList } = await drive.files.list({
