@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
 
     /* ───────── 2) 업로드 집계 ───────── */
 
-
+    const uploaded: Record<string, number> = {};
     for (const piece of sheetNames) {
 
       const { data: folderList } = await drive.files.list({
