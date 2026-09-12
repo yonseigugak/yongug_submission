@@ -22,17 +22,17 @@ const AUDIO_FINE  = 2500;
 
 /* ───── 음원 제출 규칙 ───── */
 const RULES = {
-  고정지각계: 1,
+  고정지각계: 0,
   일반결석계: 2,
-  지각: 2,
-  결석: 3,
+  지각: 1,
+  무단결석: 3,
 };
 
 type Counts = {
   고정지각계: number;
   일반결석계: number;
   지각: number;
-  결석: number;
+  무단결석: number;
 };
 
 export async function GET(req: NextRequest) {
@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
             고정지각계: 0,
             일반결석계: 0,
             지각: 0,
-            결석: 0,
+            무단결석: 0,
           };
         }
 
@@ -150,7 +150,7 @@ export async function GET(req: NextRequest) {
         '고정지각계',
         '일반결석계',
         '지각',
-        '결석',
+        '무단결석',
         '필요 음원',
         '제출',
         '미제출',
@@ -164,7 +164,7 @@ export async function GET(req: NextRequest) {
         고정지각계: 0,
         일반결석계: 0,
         지각: 0,
-        결석: 0,
+        무단결석: 0,
       };
 
       let requiredAud = 0;
@@ -174,20 +174,20 @@ export async function GET(req: NextRequest) {
         sumCnt.고정지각계 += cnt.고정지각계;
         sumCnt.일반결석계 += cnt.일반결석계;
         sumCnt.지각 += cnt.지각;
-        sumCnt.결석 += cnt.결석;
+        sumCnt.무단결석 += cnt.무단결석;
 
         requiredAud +=
           cnt.고정지각계 * RULES.고정지각계 +
           cnt.일반결석계 * RULES.일반결석계 +
           cnt.지각 * RULES.지각 +
-          cnt.결석 * RULES.결석;
+          cnt.무단결석 * RULES.무단결석;
       }
 
       const submitted  = uploaded[name] ?? 0;
       const missingAud = Math.max(requiredAud - submitted, 0);
 
       const fine =
-        sumCnt.결석 * ABSENT_FINE +
+        sumCnt.무단결석 * ABSENT_FINE +
         missingAud * AUDIO_FINE;
 
       rows.push([
@@ -195,7 +195,7 @@ export async function GET(req: NextRequest) {
         sumCnt.고정지각계,
         sumCnt.일반결석계,
         sumCnt.지각,
-        sumCnt.결석,
+        sumCnt.무단결석,
         requiredAud,
         submitted,
         missingAud,

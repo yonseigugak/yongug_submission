@@ -3,13 +3,13 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const SHEET_ID = process.env.GOOGLE_SHEETS_SHEET_ID!;
 
-const SHEET_NAMES = ['도드리', '타령', '축연무', '메나리'];
+const SHEET_NAMES = ['도드리', '취타', '방황', '꿈의 자리'];
 
 const RULES: Record<string, number> = {
-  '고정지각계': 1,
+  '고정지각계': 0,
   '일반결석계': 2,
-  '지각': 2,
-  '결석': 3,
+  '지각': 1,
+  '무단결석': 3,
 };
 
 export async function GET(req: NextRequest) {
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
         '고정지각계': 0,
         '일반결석계': 0,
         '지각': 0,
-        '결석': 0,
+        '무단결석': 0,
       };
 
       for (const row of rows) {
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
         cnt['고정지각계'] * RULES['고정지각계'] +
         cnt['일반결석계'] * RULES['일반결석계'] +
         cnt['지각'] * RULES['지각'] +
-        cnt['결석'] * RULES['결석'];
+        cnt['무단결석'] * RULES['무단결석'];
 
       if (requiredSum > 0) {
         results[sheetName] = {
