@@ -17,7 +17,7 @@ const LABEL: Record<string, string> = {
 /** 스프레드시트에 존재하는 곡명 시트 */
 //const PIECES = ['취타', '미락흘', '도드리', '축제', '플투스'] as const;
 
-type Breakdown = Record<'고정결석계' | '일반결석계' | '결석' | '지각', number>;
+type Breakdown = Record<'고정결석계' | '일반결석계' | '무단' | '지각', number>;
 type SheetInfo = { required: number; breakdown: Breakdown };
 
 type SheetInfoWithUpload = SheetInfo & { submitted: number };
