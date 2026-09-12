@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 const LABEL: Record<string, string> = {
   고정결석계: '고정',
   일반결석계: '일반',
-  결석:       '결석',
+  무단결석:       '무단',
   지각:       '지각',
   //고정지각: '별도처리',
 };
